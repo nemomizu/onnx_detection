@@ -21,7 +21,7 @@ import cv2
 from tqdm import tqdm
 import time
 
-
+print(os.getcwd())
 MAX_NUM_CLASSES = 200
 rds = np.random.RandomState(seed=526)
 COLORS = [((rds.random((3, )) * 0.6 + 0.3)) for _ in range(MAX_NUM_CLASSES)]
@@ -360,10 +360,11 @@ if __name__ == "__main__":
     }
     ignore_labels = [0, 1, 2, 7, 8, 10]
 
-
-    im_list = glob.glob('/home/share/embedded_ai/embedded_ai/yolo_datasets/valid/images/*.jpg', recursive=True)
+    max_det = 300
+    conf_thres = 0.1
+    im_list = glob.glob(os.path.join(os.getcwd(), "images/*.jpg"), recursive=True)
     index = 0
-    example_model = get_example("/home/nemoto/embedded_ai/gomi/runs/detect/train8/weights/best.onnx")
+    example_model = get_example(os.path.join(os.getcwd(), "models/best.onnx"))
     sess = onnxruntime.InferenceSession(example_model, 
                                         providers=['CUDAExecutionProvider'])
                                         # providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
@@ -383,7 +384,7 @@ if __name__ == "__main__":
     output_type = sess.get_outputs()[0].type
     print("Output type  :", output_type)
 
-    example_model_depth = get_example("/home/nemoto/embedded_ai/gomi/OnnxModel/depthmodel_full.onnx")
+    example_model_depth = get_example(os.path.join(os.getcwd(), "models/depthmodel_full.onnx"))
     sess2 = onnxruntime.InferenceSession(example_model_depth, 
                                         providers=['CUDAExecutionProvider'])
                                         # providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
@@ -405,29 +406,32 @@ if __name__ == "__main__":
 
     image_file = '/home/share/embedded_ai/embedded_ai/yolo_datasets/valid/images/020191219125611511.jpg'
     flags: int = cv2.IMREAD_COLOR
-    max_det = 300
-    conf_thres = 0.1
 
-    path = "video/sample.mp4"
 
+    # path = "/mnt/processed_data/processed_data/1_20241119-011750/ECO-U0001/ECO-0001/undistorted_movie/undistorted_front_movie/1716234422-1716234446_turn_right.MP4"
+    # path = "/mnt/processed_data/processed_data/1_20241119-011750/ECO-U0001/ECO-0001/undistorted_movie/undistorted_front_movie/1716235037-1716235059_turn_left.MP4"
+    path = "/mnt/processed_data/processed_data/1_20241119-011750/ECO-U0001/ECO-0001/undistorted_movie/undistorted_front_movie/1716234976-1716234988_turn_left.MP4"
+    
     cap = cv2.VideoCapture(path)
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     image_ids, _ = os.path.splitext(os.path.basename(path))
     frame_count_index = 0
-
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    BASE_IMAGE_SIZE = [height, width]
     scale_list = []
     shift_list = []
     for i in range(len(crop_params)):
-        sca, shif = _get_scale_and_shift(box=crop_params[i], base_image_size=(1200, 1600))
+        sca, shif = _get_scale_and_shift(box=crop_params[i], base_image_size=BASE_IMAGE_SIZE)
         scale_list.append(sca)
         shift_list.append(shif)
     scale_list.append([1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
     shift_list.append([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     scale_list = np.array(scale_list)
     shift_list = np.array(shift_list)
-
+    index = 0
     with tqdm(total=frame_count) as pbar:
-        for i in pbar:
+        while True:
             c0 = time.perf_counter()
             ret, frame = cap.read()
             check_point = time.perf_counter()
@@ -490,16 +494,19 @@ if __name__ == "__main__":
                 postprocess=c4-c31
             )
 
-            # plot_images_with_bboxes(
-            #     images=image[..., ::-1],
-            #     bboxes=bbox[0],
-            #     category_id_to_name=class_id_to_name,
-            #     scores=score[0],
-            #     labels=label[0].astype(np.int32),
-            #     score_threshold=0.1,
-            #     savefig_path=f'/home/nemoto/yolo_output/{i:06}.png'
-            # )
+            plot_images_with_bboxes(
+                images=frame[..., ::-1],
+                bboxes=bbox[0],
+                category_id_to_name=class_id_to_name,
+                scores=score[0],
+                labels=label[0].astype(np.int32),
+                score_threshold=0.1,
+                savefig_path=f'/home/nemoto/yolo_output/{index:06}.png'
+            )
             # depth_image = np.squeeze(output_depth[3][0].transpose(1,2,0)*255).astype(np.uint8)
             # depth_image = Image.fromarray(depth_image)
             # depth_image.save(f'/home/nemoto/dnadepth_output/{i:06}.png')
-    print(output)
+            index += 1
+            pbar.update(1)
+
+    print("detection finish")
