@@ -286,7 +286,7 @@ def iou_np(a, b, a_area, b_area):
     iou_np = intersect / (a_area + b_area - intersect)
     return iou_np
 
-def NMS(pred, th_iou=0.9, delta=2000, ):
+def NMS(pred, th_iou=0.5, delta=2000, ):
     bboxes = pred[..., :4]
     scores = pred[..., 4]
     labels = pred[..., 5]
@@ -332,15 +332,21 @@ if __name__ == "__main__":
     crop_params = [
         # [ x_min, y_min, x_max, y_max]
         # [0, 0, 600, 450],
-        [0, 375, 600, 825],
+        # [0, 375, 600, 825],
+        # [0, 252, 768, 828],
+        [200, 200, 800, 650],
         # [0, 750, 600, 1200],
 
         # [500, 0, 1100, 450],
-        [500, 375, 1100, 825],
+        # [500, 375, 1100, 825],
+        # [576, 252, 1344, 828],
+        [660, 200, 1260, 650],
         # [500, 750, 1100, 1200],
 
         # [1000, 0, 1600, 450],
-        [1000, 375, 1600, 825],
+        # [1000, 375, 1600, 825],
+        # [1152, 252, 1920, 828],
+        [1120, 200, 1720, 650],
         # [1000, 750, 1600, 1200],
     ]
 
@@ -358,10 +364,11 @@ if __name__ == "__main__":
         9: "stop_sign",
         10: "stop_mark",
     }
-    ignore_labels = [0, 1, 2, 7, 8, 10]
+    # ignore_labels = [0, 1, 2, 7, 8, 10]
+    ignore_labels = [7, 8]
 
     max_det = 300
-    conf_thres = 0.1
+    conf_thres = 0.05
     im_list = glob.glob(os.path.join(os.getcwd(), "images/*.jpg"), recursive=True)
     index = 0
     example_model = get_example(os.path.join(os.getcwd(), "models/best.onnx"))
@@ -384,7 +391,7 @@ if __name__ == "__main__":
     output_type = sess.get_outputs()[0].type
     print("Output type  :", output_type)
 
-    example_model_depth = get_example(os.path.join(os.getcwd(), "models/depthmodel_full.onnx"))
+    example_model_depth = get_example(os.path.join(os.getcwd(), "models/depthmodel_full_v2.onnx"))
     sess2 = onnxruntime.InferenceSession(example_model_depth, 
                                         providers=['CUDAExecutionProvider'])
                                         # providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
@@ -409,8 +416,9 @@ if __name__ == "__main__":
 
 
     # path = "/mnt/processed_data/processed_data/1_20241119-011750/ECO-U0001/ECO-0001/undistorted_movie/undistorted_front_movie/1716234422-1716234446_turn_right.MP4"
+    path = "/mnt/processed_data/video_confidential/20240807_labeling/input_data/movie/1716244831-1716244880_turn_right.MP4"
     # path = "/mnt/processed_data/processed_data/1_20241119-011750/ECO-U0001/ECO-0001/undistorted_movie/undistorted_front_movie/1716235037-1716235059_turn_left.MP4"
-    path = "/mnt/processed_data/processed_data/1_20241119-011750/ECO-U0001/ECO-0001/undistorted_movie/undistorted_front_movie/1716234976-1716234988_turn_left.MP4"
+    # path = "/mnt/processed_data/processed_data/1_20241119-011750/ECO-U0001/ECO-0001/undistorted_movie/undistorted_front_movie/1716234976-1716234988_turn_left.MP4"
     
     cap = cv2.VideoCapture(path)
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -461,11 +469,11 @@ if __name__ == "__main__":
             output = []
             for batch in range(3):
                 detection = output_onnx[batch]
-                detection = detection[detection[:, 4] > conf_thres] / [768, 576, 768, 576, 1, 1]
                 mask = np.isin(detection[..., 5], ignore_labels)
                 modified_detections = np.copy(detection)
                 modified_detections[..., 4] = np.where(mask, 0., modified_detections[..., 4])
                 detection[mask] = modified_detections[mask]
+                detection = detection[detection[:, 4] > conf_thres] / [768, 576, 768, 576, 1, 1]
                 detection *= scale_list[batch]
                 detection += shift_list[batch]
                 output.extend(detection)
@@ -503,9 +511,9 @@ if __name__ == "__main__":
                 score_threshold=0.1,
                 savefig_path=f'/home/nemoto/yolo_output/{index:06}.png'
             )
-            # depth_image = np.squeeze(output_depth[3][0].transpose(1,2,0)*255).astype(np.uint8)
-            # depth_image = Image.fromarray(depth_image)
-            # depth_image.save(f'/home/nemoto/dnadepth_output/{i:06}.png')
+            depth_image = np.squeeze(output_depth[3][0].transpose(1,2,0)*255).astype(np.uint8)
+            depth_image = Image.fromarray(depth_image)
+            depth_image.save(f'/home/nemoto/dnadepth_output/{i:06}.png')
             index += 1
             pbar.update(1)
 
