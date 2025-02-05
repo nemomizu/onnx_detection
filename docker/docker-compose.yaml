@@ -1,0 +1,53 @@
+services:
+  container-onnx:
+    image: onnxdetection:latest
+    container_name: container-onnx
+    hostname: container-onnx
+    user: 'root'
+    working_dir: "${HOME}/embedded_ai/onnx_detection/"
+    group_add:
+      - 1001
+    build:
+      context: "${HOME}/embedded_ai/onnx_detection/.." # for copying a directory `pasai-tfkeras`
+      dockerfile: "${HOME}/embedded_ai/onnx_detection/docker/Dockerfile"
+      args:
+        # for build
+        - http_proxy=${http_proxy}
+        - HTTP_PROXY=${HTTP_PROXY}
+        - ftp_proxy=${ftp_proxy}
+        - FTP_PROXY=${FTP_PROXY}
+        - https_proxy=${https_proxy}
+        - HTTPS_PROXY=${HTTPS_PROXY}
+    shm_size: '32gb'
+    runtime: nvidia
+    volumes:
+      # Map home directory.
+      - ${HOME}:${HOME}
+      - ${HOME}/embedded_ai/onnx_detection:${HOME}/embedded_ai/onnx_detection # for gitlab-ci
+      - /home/share:/home/share # TODO: temp
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - /mnt:/mnt:rw
+      # Grant display access to X Server.
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      # Grant audio access to PulseAudio.
+      - ${XDG_RUNTIME_DIR}/pulse/native:${XDG_RUNTIME_DIR}/pulse/native
+    # entrypoint: '/bin/bash -c "source docker/envrc; bash"'
+    # command: /bin/bash
+    tty: true
+    # read_only: false
+    # ports:
+    #   # for jupyter-lab
+    #   - 8008:8008
+    #   - 6006:6006
+    environment:
+      # for container env.
+      - http_proxy=${http_proxy}
+      - HTTP_PROXY=${HTTP_PROXY}
+      - ftp_proxy=${ftp_proxy}
+      - FTP_PROXY=${FTP_PROXY}
+      - https_proxy=${https_proxy}
+      - HTTPS_PROXY=${HTTPS_PROXY}
+      - WORKDIR=${WORKDIR}
+      - DOCKER_CONTAINER=container-onnx
+      - HOME=${HOME}

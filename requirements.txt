@@ -1,0 +1,7 @@
+setuptools
+numpy
+matplotlib
+onnxruntime-gpu
+opencv-python
+onnx
+tqdm
