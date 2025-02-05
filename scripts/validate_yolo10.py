@@ -490,9 +490,7 @@ if __name__ == "__main__":
             # for depth output
             depth_image = np.squeeze(output_depth[3][0].transpose(1,2,0)*255).astype(np.uint8)
 
-
             c4 = time.perf_counter()
-
 
             pbar.set_postfix(
                 FileRead=c1-c0,
